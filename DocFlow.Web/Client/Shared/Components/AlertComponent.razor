@@ -1,0 +1,33 @@
+﻿<div class="alert @GetAlertTypeClass()" role="alert">
+    @ChildContent
+</div>
+
+@code {
+    public enum AlertType
+    {
+        Unknown,
+        Success,
+        Warning,
+        Error
+    }
+
+    [Parameter]
+    public AlertType Status { get; set; } = AlertType.Unknown;
+
+    [Parameter]
+    public RenderFragment ChildContent { get; set; }
+
+
+    private string GetAlertTypeClass()
+    {
+        const string prefix = "alert";
+        switch (Status)
+        {
+            case AlertType.Success: return $"{prefix}-success";
+            case AlertType.Warning: return $"{prefix}-warning";
+            case AlertType.Error: return $"{prefix}-danger";
+            default: return string.Empty;
+        }
+    }
+
+}

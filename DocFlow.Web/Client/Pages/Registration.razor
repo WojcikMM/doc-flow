@@ -1,0 +1,114 @@
+﻿@page "/register"
+@attribute [Authorize]
+@inject HttpClient http
+@inject NavigationManager navigator
+
+@if (showSuccessAlert)
+{
+    <AlertComponent Status="@AlertComponent.AlertType.Success">
+        Application successfully created. Now you can create new one or <strong @onclick="HandleCreatedApplication"><a href="#">handle this</a></strong>.
+    </AlertComponent>
+}
+else if (showErrorAlert)
+{
+    <AlertComponent Status="@AlertComponent.AlertType.Error">
+        Cannot register application. Please contact with support or try again later.
+    </AlertComponent>
+}
+
+<h3>Registration</h3>
+
+<div class="container">
+
+    <EditForm class="mb-5" Model="@model" OnValidSubmit="@HandleValidSubmit">
+        <DataAnnotationsValidator />
+
+        <div class="row">
+            <div class="col-md-5 col-xs-12 mb-3">
+                <label for="application-number" class="col-form-label">Application Number</label>
+                <InputText id="application-number" class="form-control" @bind-Value="model.ApplicationNumber" />
+                <ValidationMessage For="() => model.ApplicationNumber" />
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="col-md-5 col-xs-12 mb-3">
+
+                <label for="step-id" class="col-form-label">Select Step</label>
+                <InputSelect id="step-id" class="form-control" @bind-Value="model.InitialTransactionId">
+                    <option></option>
+                    @foreach (var item in initialTransactions)
+                    {
+                        <option value="@item.Id">@item.Name</option>
+                    }
+                </InputSelect>
+                <ValidationMessage For="() => model.InitialTransactionId" />
+            </div>
+        </div>
+
+
+
+        <button type="submit" class="btn btn-primary">Submit</button>
+
+    </EditForm>
+</div>
+
+
+@code {
+    bool showSuccessAlert = false;
+    bool showErrorAlert = false;
+    Guid createdApplicationId = Guid.Empty;
+    RegisterApplicationDto model = new RegisterApplicationDto();
+    IEnumerable<TransactionDto> initialTransactions = new List<TransactionDto>();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await base.OnInitializedAsync();
+
+        var result = await http.GetAsync("/api/transactions/initials");
+        if (result.IsSuccessStatusCode)
+        {
+            initialTransactions = await result.Content.ReadFromJsonAsync<IEnumerable<TransactionDto>>();
+        }
+    }
+
+
+    private async Task HandleValidSubmit()
+    {
+        showErrorAlert = false;
+        showSuccessAlert = false;
+        createdApplicationId = Guid.Empty;
+
+        var result = await http.PostAsJsonAsync("/api/applications", model);
+        if (result.IsSuccessStatusCode)
+        {
+            var applicationCreatedResult = await result.Content.ReadFromJsonAsync<EntityCreatedDto>();
+            createdApplicationId = applicationCreatedResult.Id;
+            showSuccessAlert = true;
+        }
+        else
+        {
+            showErrorAlert = true;
+        }
+
+        model = new RegisterApplicationDto();
+        this.StateHasChanged();
+
+        await Task.Delay(TimeSpan.FromSeconds(10))
+            .ContinueWith((_) =>
+            {
+                showSuccessAlert = false;
+                showErrorAlert = false;
+            });
+    }
+
+    private async Task HandleCreatedApplication()
+    {
+        if (createdApplicationId == Guid.Empty)
+            return;
+
+        await http.PatchAsync($"/api/applications/{createdApplicationId}/assign", null);
+        navigator.NavigateTo($"/handling/{createdApplicationId}");
+    }
+
+}
