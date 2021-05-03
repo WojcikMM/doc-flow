@@ -30,6 +30,7 @@ namespace DocFlow.Web.Server.Domains.Statuses
         public async Task<IActionResult> BrowseStatuses([FromQuery] GetStatusesQueryDto getStatusesQuery)
         {
             var x = User.Identity.Name;
+            var user = CurrentRequestUser;
 
             var query = mapper.Map<GetStatusesQuery>(getStatusesQuery);
             var result = await statusesService.BrowseStatusesAsync(query);

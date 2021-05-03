@@ -20,8 +20,11 @@ using Microsoft.AspNetCore.Http;
 using Newtonsoft.Json;
 using DocFlow.Web.Shared.Common;
 using System.Reflection;
-using System.Security.Claims;
 using DocFlow.Web.Server.Areas.Identity;
+using Microsoft.AspNetCore.Identity;
+using System;
+using Microsoft.AspNetCore.Components.Authorization;
+using Microsoft.AspNetCore.Components.Server;
 
 namespace DocFlow.Web.Server
 {
@@ -43,28 +46,24 @@ namespace DocFlow.Web.Server
 
             services.AddDatabaseDeveloperPageExceptionFilter();
 
-            services.AddDefaultIdentity<UserEntity>(options =>
-            {
-                options.SignIn.RequireConfirmedAccount = true;
-                options.ClaimsIdentity.UserNameClaimType = ClaimTypes.Email;
-                options.ClaimsIdentity.UserIdClaimType = ClaimTypes.NameIdentifier;
-                options.ClaimsIdentity.RoleClaimType = ClaimTypes.Role;
-            })
-                .AddClaimsPrincipalFactory<CustomClaimsPrincipalFactory>()
-                .AddEntityFrameworkStores<DocFlowDbContext>();
+
+            services.AddDefaultIdentity<UserEntity>(options =>{
+                //options.SignIn.RequireConfirmedAccount = false;
+            }).AddEntityFrameworkStores<DocFlowDbContext>();
 
             services.AddIdentityServer()
-                .AddApiAuthorization<UserEntity, DocFlowDbContext>();
+                .AddApiAuthorization<UserEntity, DocFlowDbContext>()
+                .AddProfileService<CustomProfileService>();
 
             services.AddAuthentication()
                 .AddIdentityServerJwt();
-            services.AddHttpContextAccessor();
 
             services.AddControllersWithViews();
             services.AddRazorPages();
 
+     //       services.AddScoped<AuthenticationStateProvider, ServerAuthenticationStateProvider>();
+
             services.AddAutoMapper(Assembly.Load("DocFlow.Web.Server"), Assembly.Load("DocFlow.Infrastructure"));
-            //services.AddAutoMapper(typeof(ApplicationProfile), typeof(TransactionProfile), typeof(StatusProfile), typeof(ApplicationProfile), typeof(StatusProfile), typeof(TransactionProfile));
 
             services.AddTransient<IApplicationRepository, ApplicationRepository>();
             services.AddTransient<ITransactionRepository, TransactionRepository>();
@@ -76,7 +75,7 @@ namespace DocFlow.Web.Server
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
-        public void Configure(IApplicationBuilder app, IWebHostEnvironment env)
+        public void Configure(IApplicationBuilder app, IWebHostEnvironment env, UserManager<UserEntity> userManager)
         {
 
             if (env.IsDevelopment())
@@ -156,6 +155,13 @@ namespace DocFlow.Web.Server
                 endpoints.MapControllers();
                 endpoints.MapFallbackToFile("index.html");
             });
+
+            var user = new UserEntity(Guid.NewGuid().ToString(), "sample@email.com")
+            {
+                Email = "sample@email.com"
+            };
+
+            userManager.CreateAsync(user, "1234.Abcd");
         }
     }
 }
